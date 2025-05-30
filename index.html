@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario de Cámaras</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        form { margin-bottom: 20px; background: #f9f9f9; padding: 15px; border-radius: 5px; }
+        input, select { margin: 5px 0; padding: 8px; width: 100%; }
+        button { padding: 8px 15px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+        button:hover { background: #45a049; }
+    </style>
+</head>
+<body>
+    <h1>Inventario de Cámaras</h1>
+    
+    <h2>Agregar/Editar Cámara</h2>
+    <form id="camaraForm">
+        <input type="hidden" id="camaraId">
+        
+        <label for="nombre">Nombre:</label>
+        <input type="text" id="nombre" required>
+        
+        <label for="modelo">Modelo:</label>
+        <input type="text" id="modelo">
+        
+        <label for="serie">Número de Serie:</label>
+        <input type="text" id="serie" required>
+        
+        <label for="ubicacion">Ubicación:</label>
+        <input type="text" id="ubicacion" required>
+        
+        <label for="estado">Estado:</label>
+        <select id="estado" required>
+            <option value="Disponible">Disponible</option>
+            <option value="En uso">En uso</option>
+            <option value="Mantenimiento">Mantenimiento</option>
+            <option value="Dañada">Dañada</option>
+        </select>
+        
+        <button type="submit">Guardar</button>
+    </form>
+    
+    <h2>Listado de Cámaras</h2>
+    <table id="camarasTable">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Modelo</th>
+                <th>N° Serie</th>
+                <th>Ubicación</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('camaraForm');
+            const tableBody = document.querySelector('#camarasTable tbody');
+            
+            let editingId = null;
+            
+            // Cargar datos iniciales
+            fetchCamaras();
+            
+            // Manejar envío del formulario
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const camara = {
+                    nombre: document.getElementById('nombre').value,
+                    modelo: document.getElementById('modelo').value,
+                    serie: document.getElementById('serie').value,
+                    ubicacion: document.getElementById('ubicacion').value,
+                    estado: document.getElementById('estado').value
+                };
+                
+                const id = document.getElementById('camaraId').value;
+                const method = id ? 'PUT' : 'POST';
+                const url = id ? `http://localhost:3001/camaras/${id}` : 'http://localhost:3001/camaras';
+                
+                try {
+                    const response = await fetch(url, {
+                        method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(camara)
+                    });
+                    
+                    if (response.ok) {
+                        fetchCamaras();
+                        form.reset();
+                        document.getElementById('camaraId').value = '';
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            });
+            
+            // Cargar cámaras desde la API
+            async function fetchCamaras() {
+                try {
+                    const response = await fetch('http://localhost:3001/camaras');
+                    const data = await response.json();
+                    renderCamaras(data);
+                } catch (error) {
+                    console.error('Error al cargar cámaras:', error);
+                }
+            }
+            
+            // Mostrar cámaras en la tabla
+            function renderCamaras(camaras) {
+                tableBody.innerHTML = '';
+                
+                camaras.forEach(camara => {
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${camara.nombre}</td>
+                        <td>${camara.modelo}</td>
+                        <td>${camara.serie}</td>
+                        <td>${camara.ubicacion}</td>
+                        <td>${camara.estado}</td>
+                        <td>
+                            <button onclick="editCamara(${camara.id})">Editar</button>
+                            <button onclick="deleteCamara(${camara.id})">Eliminar</button>
+                        </td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                });
+            }
+            
+            // Editar cámara
+            window.editCamara = async function(id) {
+                try {
+                    const response = await fetch(`http://localhost:3001/camaras/${id}`);
+                    const camara = await response.json();
+                    
+                    document.getElementById('camaraId').value = camara.id;
+                    document.getElementById('nombre').value = camara.nombre;
+                    document.getElementById('modelo').value = camara.modelo || '';
+                    document.getElementById('serie').value = camara.serie;
+                    document.getElementById('ubicacion').value = camara.ubicacion;
+                    document.getElementById('estado').value = camara.estado;
+                } catch (error) {
+                    console.error('Error al cargar cámara:', error);
+                }
+            };
+            
+            // Eliminar cámara
+            window.deleteCamara = async function(id) {
+                if (confirm('¿Estás seguro de eliminar esta cámara?')) {
+                    try {
+                        await fetch(`http://localhost:3001/camaras/${id}`, { method: 'DELETE' });
+                        fetchCamaras();
+                    } catch (error) {
+                        console.error('Error al eliminar cámara:', error);
+                    }
+                }
+            };
+        });
+    </script>
+</body>
+</html>
